@@ -23,12 +23,12 @@ def preprocess_input(data):
     # 1. Cek dan handle kolom konstan
     numerical_cols = df.select_dtypes(include=np.number).columns
     constant_cols = df[numerical_cols].columns[df[numerical_cols].var() == 0]
-    df = df.drop(columns=constant_cols)
+    if len(constant_cols) > 0:
+        st.warning(f"Constant columns detected and dropped: {constant_cols.tolist()}")
+        df = df.drop(columns=constant_cols)
     
-    # 2. Handle nilai <= 0 untuk PowerTransformer
-    for col in numerical_cols:
-        if (df[col] <= 0).any():
-            df[col] = df[col] + 1e-6
+    # 2. Add a small constant to all numerical values
+    df[numerical_cols] = df[numerical_cols] + 1e-6
     
     # 3. Definisikan pipeline preprocessing
     categorical_features = ['Jenis Zat']
@@ -38,8 +38,7 @@ def preprocess_input(data):
         transformers=[
             ('num', Pipeline(steps=[
                 ('imputer', SimpleImputer(strategy='median')),
-                ('power', PowerTransformer(method='yeo-johnson')),
-                ('scaler', StandardScaler())
+                ('scaler', StandardScaler())  # Skip PowerTransformer
             ]), numerical_features),
             ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
         ])
